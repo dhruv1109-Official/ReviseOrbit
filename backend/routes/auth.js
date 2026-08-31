@@ -23,8 +23,8 @@ const { authLimiter } = require("../middleware/rateLimit");
 const router = express.Router();
 
 const PASSWORD_PATTERN =
-  /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@!#$%^&*()+=])[A-Za-z\@d!#$%^&*()+=]{8,32}$/;
-
+  /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@!#$%^&*()+=])[A-Za-z\d@!#$%^&*()+=]{8,32}$/;
+  
 const COOKIE_OPTS = {
   httpOnly: true,
   secure: process.env.NODE_ENV === "production",
