@@ -27,8 +27,8 @@ const PASSWORD_PATTERN =
   
 const COOKIE_OPTS = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
-  sameSite: "lax",
+  secure: true,       // required whenever sameSite is "none" — browsers reject the cookie otherwise
+  sameSite: "none",    // required for cross-site (different domain) cookie delivery
   maxAge: 7 * 24 * 60 * 60 * 1000,
 };
 
