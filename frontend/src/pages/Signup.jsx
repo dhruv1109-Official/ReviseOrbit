@@ -8,8 +8,10 @@ import { ApiError } from "../services/httpClient";
 import { useAuth } from "../context/AuthContext";
 import BackgroundOrbs from "../components/BackgroundOrbs";
 
+// Mirrors the backend's password policy exactly:
+// /^(?=.*[A-Za-z])(?=.*\d)(?=.*[!#$%^&*()+=])[A-Za-z\d!#$%^&*()+=]{8,32}$/
 const PASSWORD_REGEX =
-  /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@!#$%^&*()+=])[A-Za-z\d@!#$%^&*()+=]{8,32}$/;
+  /^(?=.*[A-Za-z])(?=.*\d)(?=.*[!#$%^&*()+=])[A-Za-z\d!#$%^&*()+=]{8,32}$/;
 
 const rules = [
   { test: (p) => p.length >= 8 && p.length <= 32, label: "8–32 characters" },

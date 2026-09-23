@@ -62,6 +62,7 @@ router.post("/setup", dbTestLimiter, async (req, res) => {
     // sign in to next time. It grants no access on its own.
     return res.status(201).json({ tenantId });
   } catch (err) {
+    console.log(err)
     console.error("Tenant setup failed:", err.message);
     return res.status(500).json({ message: "Could not create your workspace. Please try again." });
   }
@@ -83,6 +84,7 @@ router.post("/db/test", dbTestLimiter, async (req, res) => {
     await testConnection(connectionString);
     return res.json({ ok: true, message: "Connection successful." });
   } catch(err) {
+    console.log(err)
     return res.status(400).json({ ok: false, message: safeConnectionError() });
   }
 });
