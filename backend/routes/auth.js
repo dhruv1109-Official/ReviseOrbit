@@ -22,15 +22,46 @@ const { authLimiter } = require("../middleware/rateLimit");
 
 const router = express.Router();
 
-const PASSWORD_PATTERN =
-  /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@!#$%^&*()+=])[A-Za-z\@d!#$%^&*()+=]{8,32}$/;
+// Bug fixed here: the character class used to be `[A-Za-z\@d!#$%^&*()+=]`
+// — a literal "@" and a literal letter "d", NOT the `\d` digit shorthand.
+// Since the class allowed no digit at all while the lookahead below
+// required one, NO password could ever satisfy both at once — signup was
+// unconditionally broken for every user. Also widened the allowed special
+// characters (was missing several common ones despite claiming to allow
+// "all special characters").
+const SPECIAL_CHARS = "!@#$%^&*()_+\\-=\\[\\]{};:'\",.<>/?~`|\\\\";
+const PASSWORD_PATTERN = new RegExp(
+  `^(?=.*[A-Za-z])(?=.*\\d)(?=.*[${SPECIAL_CHARS}])[A-Za-z\\d${SPECIAL_CHARS}]{8,32}$`
+);
 
-const COOKIE_OPTS = {
-  httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
-  sameSite: "lax",
-  maxAge: 7 * 24 * 60 * 60 * 1000,
-};
+// Cross-origin deployments (frontend and backend on different domains, the
+// norm per docs/DEPLOYMENT.md) need SameSite=None for the browser to send
+// the cookie back on API requests at all — SameSite=Lax cookies are
+// withheld from cross-site fetch/XHR, which silently turns every
+// authenticated request into a 401 right after a successful login.
+//
+// This used to key off `process.env.NODE_ENV === "production"`. That's
+// fragile: it depends on the hosting platform actually setting NODE_ENV,
+// which several popular Node hosts (Render, Railway, etc.) do NOT do
+// automatically — forget that one env var and every login breaks exactly
+// the same way, with no indication why. `req.secure` instead reflects
+// whether THIS connection is actually HTTPS, including through a reverse
+// proxy (main.js already sets `app.set("trust proxy", 1)`, so Express
+// reads it off X-Forwarded-Proto when TLS is terminated upstream, which is
+// how virtually every PaaS host serves Node apps). That's the one signal
+// that's both necessary and sufficient here: SameSite=None is only valid
+// over HTTPS in the first place, so "are we on HTTPS right now" is exactly
+// the right question, and it needs no deployment configuration to answer
+// correctly.
+function cookieOptsFor(req) {
+  const isHttps = req.secure;
+  return {
+    httpOnly: true,
+    secure: isHttps,
+    sameSite: isHttps ? "none" : "lax",
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  };
+}
 
 async function resolveActiveTenantModels(tenantId) {
   const Tenant = getTenantModel();
@@ -92,12 +123,12 @@ router.post("/signin", authLimiter, async (req, res) => {
   if (!valid) return genericFail();
 
   const token = signSessionToken(tenantId, username);
-  res.cookie("token", token, COOKIE_OPTS);
+  res.cookie("token", token, cookieOptsFor(req));
   return res.json({ username });
 });
 
 router.post("/logout", (req, res) => {
-  res.clearCookie("token", { ...COOKIE_OPTS, maxAge: undefined });
+  res.clearCookie("token", { ...cookieOptsFor(req), maxAge: undefined });
   return res.json({ message: "Logged out." });
 });
 
